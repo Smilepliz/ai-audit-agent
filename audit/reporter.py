@@ -56,6 +56,7 @@ def build_report(
     quality: dict | None = None,
     robots: dict | None = None,
     sitemap: dict | None = None,
+    llm_result: dict | None = None,
 ) -> str:
     lines: list[str] = []
     lines.append(f"# Аудит сайта (v{VERSION})")
@@ -327,6 +328,28 @@ def build_report(
     else:
         lines.append("Существенных общих проблем по коммерческим эвристикам не найдено.")
     lines.append("")
+
+    if llm_result:
+        lines.append("## AI-анализ (DeepSeek)")
+        lines.append("")
+        if llm_result.get("overall_assessment"):
+            lines.append(f"**Общая оценка:** {llm_result['overall_assessment']}")
+            lines.append("")
+        if llm_result.get("top_issues"):
+            lines.append("**Ключевые проблемы (AI):**")
+            for issue in llm_result["top_issues"]:
+                lines.append(f"- {issue}")
+            lines.append("")
+        if llm_result.get("top_actions"):
+            lines.append("**Рекомендованные действия (AI):**")
+            for action in llm_result["top_actions"]:
+                lines.append(f"- {action}")
+            lines.append("")
+        if llm_result.get("blind_spots"):
+            lines.append("**Слепые зоны (AI):**")
+            for spot in llm_result["blind_spots"]:
+                lines.append(f"- {spot}")
+            lines.append("")
 
     lines.append("## Что сделать в первую очередь")
     lines.append("")

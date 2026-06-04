@@ -4,7 +4,7 @@
 
 **SiteAuditBot** — инструмент командной строки для автоматического коммерческого аудита сайтов. Анализирует одну страницу сайта (обычно главную), собирает SEO-метаданные, проверяет конверсионные элементы, сигналы доверия, ecommerce-функциональность и технические аспекты. Результат — Markdown-отчёт с оценками и рекомендациями.
 
-Текущая версия: **v0.5**. Кодовая база — Python-пакет `audit/`, работающий через `python -m audit <url>`.
+Текущая версия: **v0.6**. Кодовая база — Python-пакет `audit/`, работающий через `python -m audit <url>`.
 
 ## 2. Для кого он делается
 
@@ -60,9 +60,10 @@
 ```
 /
 ├── audit/                         # Основной пакет
-│   ├── __init__.py                # Точка входа, CLI (main), VERSION
-│   ├── __main__.py                # python -m audit
+│   ├── __init__.py                # Пакет: VERSION + реэкспорт main
+│   ├── __main__.py                # Точка входа, CLI (main), оркестрация
 │   ├── config.py                  # AuditConfig, константы, списки классификации
+│   ├── deepseek.py                # DeepSeek API клиент (v0.6, опционально)
 │   ├── models.py                  # TypedDict'ы (FetchResult, Issue, AnalysisResult...)
 │   ├── utils.py                   # normalize_url, save_reports, truncate_evidence...
 │   ├── fetcher.py                 # fetch_page, check_robots_txt, check_sitemap
@@ -139,12 +140,14 @@
 
 По дорожной карте (`plans/roadmap-v1.md`) и утверждённым планам:
 
-### v0.6 — DeepSeek Integration (план утверждён)
-- Добавление AI-анализа через DeepSeek API
-- Новый модуль: `audit/deepseek.py`
-- Изменения: `config.py`, `__init__.py`, `reporter.py`, `requirements.txt`
-- Флаг `--llm` — опциональное включение
-- **Статус**: план готов, реализация не начата
+### v0.6 — DeepSeek Integration (реализована)
+- AI-анализ через DeepSeek API (опциональный флаг `--llm`)
+- Новый модуль: `audit/deepseek.py` — клиент DeepSeek API (OpenAI-совместимый эндпоинт)
+- CLI-флаг `--llm` — опциональное включение AI-анализа
+- Секция "AI-анализ (DeepSeek)" в отчёте (только при `--llm`)
+- Новая зависимость: `openai>=1.0.0`
+- Без `--llm` поведение идентично v0.5
+- **Статус**: ✅ реализовано
 
 ### v0.7 — "Глубокий аудит" (план требуется)
 - Многостраничный обход (краулер, 50-100 страниц)

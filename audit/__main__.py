@@ -1,6 +1,80 @@
-"""Точка входа для python -m audit."""
+"""Точка входа для python -m audit. Содержит CLI и оркестрацию."""
 
-from audit import main
+from __future__ import annotations
+
+import argparse
+import sys
+
+from audit.config import AuditConfig
+from audit.utils import normalize_url, save_reports
+from audit.fetcher import fetch_page, check_robots_txt, check_sitemap
+from audit.quality import assess_input_quality
+from audit.analyze import analyze_html
+from audit.reporter import build_report
+
+VERSION = "0.6"
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description=f"Коммерческий аудит сайта (v{VERSION}): главная, Markdown-отчёт."
+    )
+    parser.add_argument("url", help="URL сайта, например https://example.com")
+    parser.add_argument(
+        "--config",
+        help="Путь к YAML/JSON конфигу (опционально)",
+        default=None,
+    )
+    parser.add_argument(
+        "--llm",
+        action="store_true",
+        help="Включить AI-анализ через DeepSeek",
+    )
+    args = parser.parse_args()
+
+    config = AuditConfig()
+    if args.config:
+        config.load_from_file(args.config)
+
+    try:
+        url = normalize_url(args.url)
+    except ValueError as exc:
+        print(f"Ошибка: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"Аудит: {url}")
+    fetch = fetch_page(url, config)
+    quality = assess_input_quality(fetch, config)
+
+    robots = check_robots_txt(url, config)
+    sitemap = check_sitemap(url, robots, config)
+
+    analysis = None
+    if fetch.get("ok") and fetch.get("html") and quality.get("suitable"):
+        analysis = analyze_html(fetch["html"], fetch["final_url"], config)
+
+    llm_result = None
+    if args.llm and analysis:
+        from audit.deepseek import DeepSeekConfig, generate_recommendations
+
+        deepseek_cfg = DeepSeekConfig(
+            model=config.deepseek_model,
+            temperature=config.deepseek_temperature,
+            max_tokens=config.deepseek_max_tokens,
+        )
+        llm_result = generate_recommendations(analysis, fetch, deepseek_cfg)
+
+    report = build_report(
+        url, fetch, analysis, quality,
+        robots=robots, sitemap=sitemap,
+        llm_result=llm_result,
+    )
+
+    archive_path, latest_path = save_reports(url, report)
+    print(f"Отчёт: {latest_path}")
+    print(f"Архив: {archive_path}")
+    return 0 if fetch["ok"] else 1
+
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

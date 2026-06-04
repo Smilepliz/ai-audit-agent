@@ -26,6 +26,10 @@ class AuditConfig:
     max_internal_links: int = 20
     reports_dir: str = "reports"
 
+    deepseek_model: str = "deepseek-chat"
+    deepseek_temperature: float = 0.3
+    deepseek_max_tokens: int = 2000
+
     def load_from_file(self, path: str) -> None:
         p = Path(path)
         if not p.exists():
@@ -42,7 +46,7 @@ class AuditConfig:
 
 # --- Константы (перенесены из audit.py) ---
 
-VERSION = "0.5"
+VERSION = "0.6"
 
 # Все отчёты только в reports/<domain>/ (latest.md + архивы), не в корне reports/.
 REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"

@@ -1,15 +1,16 @@
 # Roadmap развития SiteAuditBot до версии 1.0
 
-## Текущее состояние (v0.5 — "Технический базис")
+## Текущее состояние (v0.6 — "DeepSeek Integration")
 
-- **Архитектура:** Модульный пакет `audit/` (16 модулей), монолит `audit.py` разбит.
+- **Архитектура:** Модульный пакет `audit/` (17 модулей), монолит `audit.py` разбит.
 - **Область аудита:** Главная страница (один HTTP-запрос).
 - **Проверки:** SEO (title, description, H1, canonical, hreflang, robots.txt, sitemap.xml), технические (alt-атрибуты, schema.org, HTTP-заголовки), CTA, контакты, доверие (trust signals), ecommerce-чеклист (16 пунктов).
 - **Классификация:** Эвристическая — 4 типа (ecommerce, services, corporate, saas) + unknown.
+- **AI-анализ:** DeepSeek API через `openai` (опционально, флаг `--llm`).
 - **Конфигурация:** Dataclass `AuditConfig` с возможностью загрузки из JSON/YAML.
 - **Отчёты:** Markdown, сохраняются в `reports/<domain>/latest.md` + архив по дате.
-- **Зависимости:** `requests`, `beautifulsoup4`.
-- **Ограничения:** Нет обхода страниц, нет JS-рендеринга, нет тестов, нет CI/CD, нет JSON/HTML-формата отчёта, нет AI-анализа.
+- **Зависимости:** `requests`, `beautifulsoup4`, `openai>=1.0.0`.
+- **Ограничения:** Нет обхода страниц, нет JS-рендеринга, нет тестов, нет CI/CD, нет JSON/HTML-формата отчёта.
 
 ---
 
@@ -33,28 +34,39 @@
 Подробный план рефакторинга: [`plans/modular-architecture.md`](modular-architecture.md)  
 Анализ и уточнения: [`plans/modular-architecture-review.md`](modular-architecture-review.md)
 
-### Версия 0.6 — "DeepSeek Integration"
+### Версия 0.6 — "DeepSeek Integration" (РЕАЛИЗОВАНА)
 
 **Цель:** Добавить AI-анализ через DeepSeek как опциональный слой поверх существующего аудита.
 
-Ключевые изменения:
-- Новый модуль `audit/deepseek.py` — клиент DeepSeek API (через пакет `openai`)
-- Флаг `--llm` в CLI — опциональное включение AI-анализа
+**Commit:** `3627422`
+
+**Реализованный функционал:**
+
+- Новый модуль `audit/deepseek.py`:
+  - `DeepSeekConfig` — dataclass (api_key, model, temperature, max_tokens)
+  - `build_prompt()` — сборка структурированного промпта на русском языке
+  - `generate_recommendations()` — вызов DeepSeek API через пакет `openai`, парсинг JSON
+- CLI-флаг `--llm` — опциональное включение AI-анализа
 - Секция "AI-анализ (DeepSeek)" в отчёте (только при `--llm`)
 - Новая зависимость: `openai>=1.0.0`
+- Перенос точки входа CLI из `audit/__init__.py` в `audit/__main__.py`
 
 Принцип: без `--llm` v0.6 ведёт себя идентично v0.5.
 
 Подробный план: [`plans/deepseek-integration-v0.6.md`](deepseek-integration-v0.6.md)
 
-| Задача | Тип | Оценка |
+| Задача | Тип | Статус |
 |--------|-----|--------|
-| Модуль `audit/deepseek.py` (конфиг, промпт, API) | Среднее | 4 ч |
-| Флаг `--llm` в CLI | Быстрое | 0.5 ч |
-| AI-секция в отчёте | Быстрое | 0.5 ч |
-| Зависимость `openai` | Быстрое | 0.1 ч |
+| Модуль `audit/deepseek.py` (конфиг, промпт, API) | Среднее | ✅ Реализовано |
+| Флаг `--llm` в CLI | Быстрое | ✅ Реализовано |
+| AI-секция в отчёте | Быстрое | ✅ Реализовано |
+| Зависимость `openai` | Быстрое | ✅ Реализовано |
 
-**Итого:** ~5 часов.
+**Результаты тестирования:**
+
+1. `python -m audit https://books.toscrape.com` — отчёт без AI-секции, поведение идентично v0.5
+2. `python -m audit https://books.toscrape.com --llm` (без `DEEPSEEK_API_KEY`) — предупреждение в stderr, аудит не падает, отчёт без AI-секции
+3. `python -m audit https://books.toscrape.com --llm` (с рабочим `DEEPSEEK_API_KEY`) — AI-секция в отчёте с анализом и рекомендациями
 
 ### Версия 0.7 — "Глубокий аудит"
 
@@ -216,7 +228,7 @@ class BaseCheck(ABC):
 | Favicon | Средняя | Низкая | Средний | 0.5 | ✅ |
 | Конфиг вынести | Средняя | Низкая | Средний | 0.5 | ✅ |
 | CLI (--config) | Средняя | Низкая | Средний | 0.5 | ✅ |
-| DeepSeek AI-анализ | Высокая | Средняя | Высокий | 0.6 | ⬜ |
+| DeepSeek AI-анализ | Высокая | Средняя | Высокий | 0.6 | ✅ |
 | Многостраничный аудит | Очень высокая | Высокая | Высокий | 0.7 | ⬜ |
 | PageSpeed API | Высокая | Средняя | Высокий | 0.7 | ⬜ |
 | Юнит-тесты | Очень высокая | Средняя | Высокий | 0.7 | ⬜ |
@@ -232,7 +244,7 @@ class BaseCheck(ABC):
 
 ---
 
-## 5. Диаграмма архитектуры (текущая v0.5 + целевая)
+## 5. Диаграмма архитектуры (текущая v0.6 + целевая)
 
 ```mermaid
 flowchart TD
